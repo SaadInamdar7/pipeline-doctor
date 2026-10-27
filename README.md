@@ -26,17 +26,24 @@ Live mode uses read-only AWS API calls (`Get*` and `Describe*`) to collect the e
 
 [`evals/scenarios.yaml`](evals/scenarios.yaml) contains 43 synthetic incidents: one straightforward scenario per pattern, plus 12 harder ones. The hard scenarios cover generic errors that need configuration to resolve, incidents with no service given, noisy logs, symptoms reported instead of causes, and plain-language descriptions with no error string. All identifiers in the scenarios are fictional.
 
-Rule engine results:
+Top-1 accuracy:
 
-| Set | Scenarios | Top-1 | Top-3 |
+| Set | Scenarios | Rules only | Rules + Claude Opus 5.5 |
 |---|---|---|---|
 | Easy | 31 | 100% | 100% |
-| Hard | 12 | 58.3% | 83.3% |
-| Overall | 43 | 88.4% | 95.3% |
+| Hard | 12 | 58.3% | 100% |
+| Overall | 43 | 88.4% | 100% |
 
-Median latency is under 1 ms per incident. The rules were not tuned to the hard set; the five misses are the cases the LLM step is meant to handle. Full results are in [`evals/results-rules.json`](evals/results-rules.json).
+| | Rules only | Rules + Claude Opus 5.5 |
+|---|---|---|
+| Median latency per incident | < 1 ms | 6.1 s |
+| Tokens per incident (average) | 0 | 2,661 |
 
-To reproduce, or to score the LLM step (requires Bedrock model access):
+The rules were not tuned to the hard set. Their five misses are two symptom-versus-cause confusions, one service mismatch and two plain-language reports with no error string; the LLM step resolved all five. The rule engine alone ranks the correct cause in its top three for 95.3% of scenarios.
+
+The scenario set is small and was written by the same author as the patterns, so treat these numbers as a regression baseline rather than a measure of accuracy on real incidents. Full results are in [`evals/results-rules.json`](evals/results-rules.json) and [`evals/results-llm.json`](evals/results-llm.json).
+
+To reproduce (the second command requires Bedrock model access):
 
 ```bash
 uv run pipeline-doctor eval --out evals/results-rules.json
@@ -92,15 +99,16 @@ The server exposes `diagnose_incident`, `diagnose_glue_job_run`, `diagnose_mwaa_
 
 ### Configuration
 
-| Environment variable | Default |
-|---|---|
-| `PIPELINE_DOCTOR_MODEL` | `anthropic.claude-opus-5-5` |
-| `PIPELINE_DOCTOR_FALLBACK_MODEL` | `anthropic.claude-opus-4-8` |
-| `AWS_REGION` | `us-east-1` |
+| Environment variable | Default | Notes |
+|---|---|---|
+| `PIPELINE_DOCTOR_BEDROCK_API` | `mantle` | `mantle` uses the Bedrock Messages API endpoint; `runtime` uses `bedrock-runtime` InvokeModel with cross-region inference profiles |
+| `PIPELINE_DOCTOR_MODEL` | `anthropic.claude-opus-5-5` | `us.anthropic.claude-opus-5-5` with `runtime` |
+| `PIPELINE_DOCTOR_FALLBACK_MODEL` | `anthropic.claude-opus-4-8` | `us.anthropic.claude-opus-4-8` with `runtime` |
+| `AWS_REGION` | `us-east-1` | |
 
 ### IAM permissions
 
-Live mode needs `glue:GetJobRun`, `glue:GetJob`, `glue:GetConnection`, `ec2:DescribeRouteTables`, `ec2:DescribeSubnets`, `ec2:DescribePrefixLists`, `ec2:DescribeSecurityGroups`, `logs:GetLogEvents`, `airflow:GetEnvironment` and `athena:GetQueryExecution`. The `--llm` option also needs `bedrock:InvokeModel`.
+Live mode needs `glue:GetJobRun`, `glue:GetJob`, `glue:GetConnection`, `ec2:DescribeRouteTables`, `ec2:DescribeSubnets`, `ec2:DescribePrefixLists`, `ec2:DescribeSecurityGroups`, `logs:GetLogEvents`, `airflow:GetEnvironment` and `athena:GetQueryExecution`. The `--llm` option also needs `bedrock-mantle:CreateInference` (with `mantle`) or `bedrock:InvokeModel` (with `runtime`).
 
 ## Adding a pattern
 

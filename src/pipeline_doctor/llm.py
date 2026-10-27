@@ -10,12 +10,17 @@ from __future__ import annotations
 import json
 import os
 
-from anthropic import AnthropicBedrockMantle, BetaFallbackState, BetaRefusalFallbackMiddleware
+from anthropic import AnthropicBedrock, AnthropicBedrockMantle, BetaFallbackState, BetaRefusalFallbackMiddleware
 
 from .engine import Candidate, load_patterns
 
-MODEL = os.environ.get("PIPELINE_DOCTOR_MODEL", "anthropic.claude-opus-5-5")
-FALLBACK_MODEL = os.environ.get("PIPELINE_DOCTOR_FALLBACK_MODEL", "anthropic.claude-opus-4-8")
+# "mantle" uses the Bedrock Messages API endpoint (bedrock-mantle:CreateInference).
+# "runtime" uses bedrock-runtime InvokeModel with cross-region inference profiles,
+# for accounts whose IAM policies only grant bedrock:InvokeModel.
+BEDROCK_API = os.environ.get("PIPELINE_DOCTOR_BEDROCK_API", "mantle")
+_PREFIX = "us.anthropic." if BEDROCK_API == "runtime" else "anthropic."
+MODEL = os.environ.get("PIPELINE_DOCTOR_MODEL", _PREFIX + "claude-opus-5-5")
+FALLBACK_MODEL = os.environ.get("PIPELINE_DOCTOR_FALLBACK_MODEL", _PREFIX + "claude-opus-4-8")
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 SYSTEM = """You diagnose failures in AWS data pipelines (AWS Glue, Amazon MWAA / Apache Airflow,
@@ -64,10 +69,11 @@ def _prompt(incident: dict, candidates: list[Candidate]) -> str:
 _client = None
 
 
-def client() -> AnthropicBedrockMantle:
+def client() -> AnthropicBedrockMantle | AnthropicBedrock:
     global _client
     if _client is None:
-        _client = AnthropicBedrockMantle(
+        cls = AnthropicBedrock if BEDROCK_API == "runtime" else AnthropicBedrockMantle
+        _client = cls(
             aws_region=REGION,
             middleware=[BetaRefusalFallbackMiddleware([{"model": FALLBACK_MODEL}])],
         )
