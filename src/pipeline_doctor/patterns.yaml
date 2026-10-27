@@ -1,0 +1,401 @@
+# Failure-pattern knowledge base.
+# Each pattern: id, service, title, signatures (case-insensitive regexes matched
+# against logs/error text), optional checks (named config predicates in
+# engine.CHECKS), root_cause, fix (ordered steps), doc (public AWS docs).
+
+- id: glue_s3_access_denied
+  service: glue
+  title: Glue job role cannot read/write the S3 path
+  signatures:
+    - 'AmazonS3Exception: Access Denied'
+    - 'Status Code: 403.*S3'
+    - 's3:(GetObject|PutObject|ListBucket)'
+  root_cause: The job's IAM role lacks S3 permissions for the source/target prefix, or a bucket policy denies it.
+  fix:
+    - Add s3:GetObject/PutObject/ListBucket on the exact bucket and prefix to the job role.
+    - Check the bucket policy and any SCP for explicit Deny statements.
+    - If the bucket is in another account, add the job role to that bucket's policy.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/create-an-iam-role.html
+
+- id: glue_kms_denied
+  service: glue
+  title: Glue job role cannot use the KMS key
+  signatures:
+    - 'not authorized to perform: kms:(Decrypt|GenerateDataKey)'
+    - 'KMS.*AccessDenied'
+    - 'AWSKMSException'
+  root_cause: Data or job bookmarks/logs are encrypted with a KMS key whose key policy or IAM policy does not allow the job role.
+  fix:
+    - Grant kms:Decrypt and kms:GenerateDataKey on the key to the job role.
+    - Add the role to the key policy if the key policy does not delegate to IAM.
+    - For cross-account keys, allow the role in both the key policy and its own IAM policy.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/encryption-security-configuration.html
+
+- id: glue_lf_insufficient
+  service: glue
+  title: Missing Lake Formation table permissions
+  signatures:
+    - 'Insufficient Lake Formation permission\(s\) on (?!s3://)'
+    - 'AccessDeniedException.*Lake Formation'
+  root_cause: The table is governed by Lake Formation and the job role has no SELECT/INSERT/DESCRIBE grant on it.
+  fix:
+    - Grant the job role DESCRIBE on the database and SELECT (and INSERT/ALTER for writes) on the table in Lake Formation.
+    - For LF-Tag governed tables, grant on the matching LF-Tag expression instead.
+  doc: https://docs.aws.amazon.com/lake-formation/latest/dg/granting-catalog-permissions.html
+
+- id: glue_vpc_no_s3_endpoint
+  service: glue
+  title: VPC connection has no route to S3
+  signatures:
+    - 'Connect to .*s3[.a-z0-9-]*amazonaws\.com.*(timed out|failed)'
+    - 'Unable to execute HTTP request: .*s3'
+  checks: [no_s3_route]
+  root_cause: A Glue connection places the job in a private subnet with neither an S3 gateway endpoint nor a NAT gateway, so S3 calls time out.
+  fix:
+    - Create an S3 gateway VPC endpoint and associate it with the connection subnet's route table.
+    - Alternatively route the subnet through a NAT gateway.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/vpc-endpoints-s3.html
+
+- id: glue_jdbc_sg_self_ref
+  service: glue
+  title: Security group lacks the self-referencing rule
+  signatures:
+    - 'Communications link failure'
+    - 'connect timed out'
+    - 'Connection timed out'
+    - 'At least one security group must open all ingress ports'
+  checks: [sg_missing_self_reference]
+  root_cause: Glue workers in the connection's security group cannot talk to each other or the database because the group has no self-referencing all-TCP inbound rule.
+  fix:
+    - Add an inbound rule on the connection security group allowing all TCP from the same security group.
+    - Make sure the database security group allows the DB port from the Glue security group.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/setup-vpc-for-glue-access.html
+
+- id: glue_jdbc_ssl
+  service: glue
+  title: JDBC TLS certificate not trusted
+  signatures:
+    - 'PKIX path building failed'
+    - 'SSLHandshakeException'
+    - 'unable to find valid certification path'
+  root_cause: The database presents a certificate signed by a CA that is not in the job's trust store.
+  fix:
+    - Upload the CA bundle to S3 and reference it in the connection's custom JDBC certificate setting.
+    - Confirm the hostname in the JDBC URL matches the certificate.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/connection-properties.html
+
+- id: glue_oom
+  service: glue
+  title: Driver or executor ran out of memory
+  signatures:
+    - 'java\.lang\.OutOfMemoryError'
+    - 'Container killed by YARN for exceeding memory limits'
+    - 'exit code 137'
+    - 'GC overhead limit exceeded'
+  root_cause: Data skew, collect() to the driver, or millions of small input files exhaust driver/executor memory.
+  fix:
+    - Remove collect()/toPandas() on large data; write results instead.
+    - For many small files enable groupFiles=inPartition with groupSize, or compact the input.
+    - Repartition on a high-cardinality key to fix skew, then move to G.2X/G.4X workers if still needed.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/monitor-profile-debug-oom-abnormalities.html
+
+- id: glue_no_space
+  service: glue
+  title: Worker local disk full
+  signatures:
+    - 'No space left on device'
+  root_cause: Shuffle or spill data exceeds the worker's local disk.
+  fix:
+    - Enable the Glue Spark shuffle manager with S3 (--write-shuffle-files-to-s3 true).
+    - Reduce shuffle volume (filter early, avoid wide joins on skewed keys) or use larger workers.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-shuffle-manager.html
+
+- id: glue_concurrent_runs
+  service: glue
+  title: Max concurrent runs exceeded
+  signatures:
+    - 'ConcurrentRunsExceededException'
+    - 'Concurrent runs exceeded'
+  root_cause: More runs were started than the job's MaxConcurrentRuns setting allows.
+  fix:
+    - Raise MaxConcurrentRuns on the job, or serialize triggers.
+    - In orchestrators, add a pool/semaphore so runs queue instead of failing.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/add-job.html
+
+- id: glue_iceberg_commit_conflict
+  service: glue
+  title: Concurrent Iceberg commits conflicting
+  signatures:
+    - 'CommitFailedException'
+    - 'metadata location .* has changed'
+    - 'Cannot commit.*because base metadata location'
+  root_cause: Two writers committed to the same Iceberg table at once and the optimistic-concurrency retry budget ran out.
+  fix:
+    - Raise commit.retry.num-retries and commit.retry.max-wait-ms on the table.
+    - Avoid overlapping writers on the same partitions; schedule compaction away from ingest.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-iceberg.html
+
+- id: glue_parquet_schema_mismatch
+  service: glue
+  title: Parquet column type mismatch
+  signatures:
+    - 'Parquet column cannot be converted'
+    - 'Expected: .*, Found: '
+    - 'UnsupportedOperationException: org\.apache\.parquet'
+  root_cause: Files under the same table have different physical types for a column (for example int vs bigint or string vs decimal).
+  fix:
+    - Find the offending files and rewrite them with a consistent schema.
+    - Cast the column explicitly when reading, or adopt an open table format that tracks schema evolution.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-parquet-home.html
+
+- id: glue_module_not_found
+  service: glue
+  title: Python module missing in the job
+  signatures:
+    - "ModuleNotFoundError: No module named"
+  root_cause: The job imports a library that is not part of the Glue version's runtime.
+  fix:
+    - Add the package with --additional-python-modules (pin the version).
+    - For private packages, supply a wheel from S3 or use a Python repository through a VPC connection.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-python-libraries.html
+
+- id: glue_ip_exhaustion
+  service: glue
+  title: Subnet ran out of IP addresses
+  signatures:
+    - 'not enough IP addresses'
+    - 'InsufficientFreeAddressesInSubnet'
+    - 'There are not enough free IP addresses'
+  root_cause: Each Glue worker takes an ENI in the connection subnet; the subnet has fewer free IPs than requested workers.
+  fix:
+    - Move the connection to a larger subnet or add CIDR space.
+    - Reduce NumberOfWorkers or stagger concurrent jobs sharing the subnet.
+  doc: https://docs.aws.amazon.com/glue/latest/dg/troubleshooting-glue.html
+
+- id: mwaa_dag_import_missing_dep
+  service: mwaa
+  title: DAG import error from a missing package
+  signatures:
+    - 'Broken DAG'
+    - "ModuleNotFoundError: No module named"
+  root_cause: The DAG imports a package that is not installed in the environment.
+  fix:
+    - Add the package to requirements.txt, pinned and compatible with the Airflow constraints file.
+    - Test with the aws-mwaa-local-runner (or aws-mwaa-docker-images) before updating the environment.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/working-dags-dependencies.html
+
+- id: mwaa_requirements_conflict
+  service: mwaa
+  title: requirements.txt fails to resolve
+  signatures:
+    - 'ResolutionImpossible'
+    - 'Could not find a version that satisfies the requirement'
+    - 'conflicting dependencies'
+  root_cause: A pinned package conflicts with the Airflow constraints file for the environment's version.
+  fix:
+    - Add the matching --constraint URL at the top of requirements.txt.
+    - Relax or re-pin the conflicting package to a constraints-compatible version.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-dependencies.html
+
+- id: mwaa_pip_no_internet
+  service: mwaa
+  title: Environment cannot reach PyPI
+  signatures:
+    - 'Could not fetch URL https://pypi\.org'
+    - 'Connection to (pypi\.org|files\.pythonhosted\.org).* timed out'
+    - "Failed to establish a new connection"
+  checks: [no_internet_route]
+  root_cause: The environment runs in private subnets without NAT, so pip cannot download packages.
+  fix:
+    - Package dependencies as wheels in plugins.zip and point requirements.txt at them (--find-links /usr/local/airflow/plugins --no-index).
+    - Or add a NAT gateway / private PyPI mirror reachable from the subnets.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-dependencies.html
+
+- id: mwaa_tasks_stuck_queued
+  service: mwaa
+  title: Tasks stuck in queued state
+  signatures:
+    - 'in queued state'
+    - 'stuck in queued'
+    - 'Adopted tasks were still pending'
+  checks: [workers_capped]
+  root_cause: Queued work exceeds worker capacity (max workers reached or set equal to min), so tasks wait until they time out.
+  fix:
+    - Raise MaxWorkers and check celery.worker_autoscale matches the environment class.
+    - Lower DAG/task concurrency or spread schedules to flatten the peak.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-tuning.html
+
+- id: mwaa_worker_oom
+  service: mwaa
+  title: Worker process killed for memory
+  signatures:
+    - 'Negsignal\.SIGKILL'
+    - 'killed by signal 9'
+    - 'return code -9'
+  root_cause: A task loaded too much data into the worker's memory and the OS killed it.
+  fix:
+    - Push heavy processing to Glue/EMR/ECS and keep Airflow tasks as orchestration only.
+    - Lower worker concurrency or move to a larger environment class.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-tuning.html
+
+- id: mwaa_db_connections
+  service: mwaa
+  title: Metadata database connections exhausted
+  signatures:
+    - 'too many connections'
+    - 'remaining connection slots are reserved'
+    - 'QueuePool limit of size .* overflow .* reached'
+  root_cause: Schedulers, workers, and top-level DAG code open more metadata-DB connections than the environment allows.
+  fix:
+    - Remove database or Variable.get() calls from top-level DAG code.
+    - Reduce scheduler count or sql_alchemy_pool_size; avoid oversizing workers on a small environment class.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-tuning.html
+
+- id: mwaa_zombie_task
+  service: mwaa
+  title: Task marked zombie / killed externally
+  signatures:
+    - 'Detected zombie job'
+    - 'killed externally'
+    - 'zombie'
+  root_cause: The worker running the task stopped heartbeating (worker replaced, overloaded, or task exceeded the queue visibility timeout).
+  fix:
+    - Check worker CPU/memory around the failure; reduce concurrency if saturated.
+    - Keep task runtime under the Celery visibility timeout or raise it via configuration.
+    - Add retries for tasks that can safely re-run.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/t-apache-airflow-202.html
+
+- id: mwaa_exec_role_s3
+  service: mwaa
+  title: Execution role cannot read the DAG bucket
+  signatures:
+    - 'AccessDenied.*(dags|requirements|plugins)'
+    - 'Unable to read .* from S3'
+  root_cause: The environment's execution role lacks s3:GetObject/ListBucket on the source bucket, or Block Public Access/bucket policy denies it.
+  fix:
+    - Grant s3:GetObject*, s3:GetBucket*, s3:List* on the source bucket to the execution role.
+    - If the bucket uses a customer-managed KMS key, grant kms:Decrypt to the role.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/mwaa-create-role.html
+
+- id: mwaa_plugin_incompatible
+  service: mwaa
+  title: Plugin fails to import
+  signatures:
+    - 'Failed to import plugin'
+    - 'plugins_manager.*Error'
+  root_cause: plugins.zip contains code using APIs removed in the environment's Airflow version, or a wrong folder layout.
+  fix:
+    - Update the plugin for the current Airflow version (check the provider and core changelogs).
+    - Zip with the plugin modules at the archive root.
+  doc: https://docs.aws.amazon.com/mwaa/latest/userguide/configuring-dag-import-plugins.html
+
+- id: athena_partition_schema_mismatch
+  service: athena
+  title: Partition schema differs from table schema
+  signatures:
+    - 'HIVE_PARTITION_SCHEMA_MISMATCH'
+  root_cause: Older partitions were registered with a different column type than the current table definition.
+  fix:
+    - Update or re-create the stale partitions so their schema matches the table.
+    - Configure the crawler to update all partitions from the table, or use partition projection.
+  doc: https://docs.aws.amazon.com/athena/latest/ug/troubleshooting-athena.html
+
+- id: athena_bad_data
+  service: athena
+  title: Malformed records in source files
+  signatures:
+    - 'HIVE_BAD_DATA'
+    - 'HIVE_CURSOR_ERROR'
+    - 'Error parsing field value'
+  root_cause: Some files contain records that do not match the declared format or types.
+  fix:
+    - Locate files with "$path" in a SELECT and inspect the failing records.
+    - Use ignore.malformed.json for JSON, or clean the data upstream.
+  doc: https://docs.aws.amazon.com/athena/latest/ug/troubleshooting-athena.html
+
+- id: athena_exhausted_resources
+  service: athena
+  title: Query exceeded engine resources
+  signatures:
+    - 'Query exhausted resources at this scale factor'
+    - 'EXCEEDED_LOCAL_MEMORY_LIMIT'
+  root_cause: A large join, ORDER BY or GROUP BY needs more memory than a single node has.
+  fix:
+    - Put the larger table on the left of joins, filter early, and add LIMIT to ORDER BY.
+    - Partition and compact data; for regular heavy queries use provisioned capacity.
+  doc: https://docs.aws.amazon.com/athena/latest/ug/performance-tuning.html
+
+- id: athena_s3_slowdown
+  service: athena
+  title: S3 throttling (SlowDown)
+  signatures:
+    - 'SlowDown'
+    - 'Please reduce your request rate'
+  root_cause: The query hits too many objects under one prefix at once (often many small files).
+  fix:
+    - Compact small files into larger ones (128 MB to 1 GB).
+    - Spread data across more prefixes via partitioning.
+  doc: https://docs.aws.amazon.com/athena/latest/ug/performance-tuning.html
+
+- id: athena_output_access
+  service: athena
+  title: Cannot write to the query result location
+  signatures:
+    - 'Unable to verify/create output bucket'
+    - 'Access denied when writing (output|to output)'
+  root_cause: The caller lacks write permissions on the workgroup's result bucket, or the bucket is in another region or account.
+  fix:
+    - Grant s3:PutObject/GetObject/ListBucket on the results prefix to the caller.
+    - Use a results bucket in the same region as the workgroup.
+  doc: https://docs.aws.amazon.com/athena/latest/ug/querying.html
+
+- id: athena_too_many_partitions
+  service: athena
+  title: CTAS/INSERT writes too many partitions
+  signatures:
+    - 'HIVE_TOO_MANY_OPEN_PARTITIONS'
+  root_cause: A single CTAS or INSERT INTO statement writes more than 100 partitions.
+  fix:
+    - Split the write into batches of at most 100 partitions each.
+    - Or write with Glue/Spark, which has no such limit.
+  doc: https://docs.aws.amazon.com/athena/latest/ug/ctas-insert-into.html
+
+- id: lf_iam_allowed_principals
+  service: lakeformation
+  title: Lake Formation grants not enforced
+  signatures:
+    - 'IAMAllowedPrincipals'
+    - 'can still (see|access|query)'
+    - 'permissions (are )?not (being )?enforced'
+  checks: [iam_allowed_principals_present]
+  root_cause: The database/table still grants Super to IAMAllowedPrincipals, so IAM permissions alone decide access and LF grants are ignored.
+  fix:
+    - Revoke IAMAllowedPrincipals from the database and tables, after granting explicit LF permissions to every consumer.
+    - Turn off the "Use only IAM access control" defaults for new databases and tables.
+  doc: https://docs.aws.amazon.com/lake-formation/latest/dg/upgrade-glue-lake-formation.html
+
+- id: lf_cross_account_ram
+  service: lakeformation
+  title: Cross-account share not accepted
+  signatures:
+    - 'EntityNotFoundException'
+    - 'resource share.*(pending|invitation)'
+    - 'Database .* not found'
+  checks: [ram_invitation_pending]
+  root_cause: The consumer account has not accepted the AWS RAM resource share, so the shared database is not visible.
+  fix:
+    - Accept the RAM invitation in the consumer account (or enable sharing within AWS Organizations).
+    - Create a resource link in the consumer catalog and grant permissions on it.
+  doc: https://docs.aws.amazon.com/lake-formation/latest/dg/cross-account-permissions.html
+
+- id: lf_data_location
+  service: lakeformation
+  title: Missing data location permission
+  signatures:
+    - 'Insufficient Lake Formation permission\(s\) on s3://'
+    - 'DATA_LOCATION_ACCESS'
+  root_cause: Creating a table or crawler over a registered S3 location needs a data location permission the principal does not have.
+  fix:
+    - Grant DATA_LOCATION_ACCESS on the registered location to the principal.
+    - Confirm the location is registered with a role that can read it.
+  doc: https://docs.aws.amazon.com/lake-formation/latest/dg/granting-location-permissions.html

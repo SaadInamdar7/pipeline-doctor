@@ -1,0 +1,480 @@
+{
+  "engine": "rules",
+  "overall": {
+    "n": 43,
+    "top1": 38,
+    "top1_pct": 88.4
+  },
+  "easy": {
+    "n": 31,
+    "top1": 31,
+    "top1_pct": 100.0
+  },
+  "hard": {
+    "n": 12,
+    "top1": 7,
+    "top1_pct": 58.3
+  },
+  "rules_top3_pct": 95.3,
+  "latency_p50_s": 0.0,
+  "latency_max_s": 0.022,
+  "misses": [
+    {
+      "id": "h06",
+      "expected": "lf_data_location",
+      "got": "glue_lf_insufficient"
+    },
+    {
+      "id": "h08",
+      "expected": "mwaa_worker_oom",
+      "got": "mwaa_zombie_task"
+    },
+    {
+      "id": "h09",
+      "expected": "glue_ip_exhaustion",
+      "got": "unknown"
+    },
+    {
+      "id": "h10",
+      "expected": "athena_too_many_partitions",
+      "got": "unknown"
+    },
+    {
+      "id": "h12",
+      "expected": "mwaa_db_connections",
+      "got": "glue_jdbc_sg_self_ref"
+    }
+  ],
+  "rows": [
+    {
+      "id": "e01",
+      "difficulty": "easy",
+      "expected": "glue_s3_access_denied",
+      "got": "glue_s3_access_denied",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.022,
+      "tokens": null
+    },
+    {
+      "id": "e02",
+      "difficulty": "easy",
+      "expected": "glue_kms_denied",
+      "got": "glue_kms_denied",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e03",
+      "difficulty": "easy",
+      "expected": "glue_lf_insufficient",
+      "got": "glue_lf_insufficient",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e04",
+      "difficulty": "easy",
+      "expected": "glue_vpc_no_s3_endpoint",
+      "got": "glue_vpc_no_s3_endpoint",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e05",
+      "difficulty": "easy",
+      "expected": "glue_jdbc_sg_self_ref",
+      "got": "glue_jdbc_sg_self_ref",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e06",
+      "difficulty": "easy",
+      "expected": "glue_jdbc_ssl",
+      "got": "glue_jdbc_ssl",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e07",
+      "difficulty": "easy",
+      "expected": "glue_oom",
+      "got": "glue_oom",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e08",
+      "difficulty": "easy",
+      "expected": "glue_no_space",
+      "got": "glue_no_space",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e09",
+      "difficulty": "easy",
+      "expected": "glue_concurrent_runs",
+      "got": "glue_concurrent_runs",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e10",
+      "difficulty": "easy",
+      "expected": "glue_iceberg_commit_conflict",
+      "got": "glue_iceberg_commit_conflict",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e11",
+      "difficulty": "easy",
+      "expected": "glue_parquet_schema_mismatch",
+      "got": "glue_parquet_schema_mismatch",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e12",
+      "difficulty": "easy",
+      "expected": "glue_module_not_found",
+      "got": "glue_module_not_found",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e13",
+      "difficulty": "easy",
+      "expected": "glue_ip_exhaustion",
+      "got": "glue_ip_exhaustion",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e14",
+      "difficulty": "easy",
+      "expected": "mwaa_dag_import_missing_dep",
+      "got": "mwaa_dag_import_missing_dep",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e15",
+      "difficulty": "easy",
+      "expected": "mwaa_requirements_conflict",
+      "got": "mwaa_requirements_conflict",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e16",
+      "difficulty": "easy",
+      "expected": "mwaa_pip_no_internet",
+      "got": "mwaa_pip_no_internet",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e17",
+      "difficulty": "easy",
+      "expected": "mwaa_tasks_stuck_queued",
+      "got": "mwaa_tasks_stuck_queued",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e18",
+      "difficulty": "easy",
+      "expected": "mwaa_worker_oom",
+      "got": "mwaa_worker_oom",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e19",
+      "difficulty": "easy",
+      "expected": "mwaa_db_connections",
+      "got": "mwaa_db_connections",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e20",
+      "difficulty": "easy",
+      "expected": "mwaa_zombie_task",
+      "got": "mwaa_zombie_task",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e21",
+      "difficulty": "easy",
+      "expected": "mwaa_exec_role_s3",
+      "got": "mwaa_exec_role_s3",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e22",
+      "difficulty": "easy",
+      "expected": "mwaa_plugin_incompatible",
+      "got": "mwaa_plugin_incompatible",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e23",
+      "difficulty": "easy",
+      "expected": "athena_partition_schema_mismatch",
+      "got": "athena_partition_schema_mismatch",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e24",
+      "difficulty": "easy",
+      "expected": "athena_bad_data",
+      "got": "athena_bad_data",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e25",
+      "difficulty": "easy",
+      "expected": "athena_exhausted_resources",
+      "got": "athena_exhausted_resources",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e26",
+      "difficulty": "easy",
+      "expected": "athena_s3_slowdown",
+      "got": "athena_s3_slowdown",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e27",
+      "difficulty": "easy",
+      "expected": "athena_output_access",
+      "got": "athena_output_access",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e28",
+      "difficulty": "easy",
+      "expected": "athena_too_many_partitions",
+      "got": "athena_too_many_partitions",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e29",
+      "difficulty": "easy",
+      "expected": "lf_iam_allowed_principals",
+      "got": "lf_iam_allowed_principals",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e30",
+      "difficulty": "easy",
+      "expected": "lf_cross_account_ram",
+      "got": "lf_cross_account_ram",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "e31",
+      "difficulty": "easy",
+      "expected": "lf_data_location",
+      "got": "lf_data_location",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h01",
+      "difficulty": "hard",
+      "expected": "glue_jdbc_sg_self_ref",
+      "got": "glue_jdbc_sg_self_ref",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h02",
+      "difficulty": "hard",
+      "expected": "glue_vpc_no_s3_endpoint",
+      "got": "glue_vpc_no_s3_endpoint",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h03",
+      "difficulty": "hard",
+      "expected": "mwaa_pip_no_internet",
+      "got": "mwaa_pip_no_internet",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h04",
+      "difficulty": "hard",
+      "expected": "mwaa_tasks_stuck_queued",
+      "got": "mwaa_tasks_stuck_queued",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h05",
+      "difficulty": "hard",
+      "expected": "mwaa_dag_import_missing_dep",
+      "got": "mwaa_dag_import_missing_dep",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h06",
+      "difficulty": "hard",
+      "expected": "lf_data_location",
+      "got": "glue_lf_insufficient",
+      "top1": false,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h07",
+      "difficulty": "hard",
+      "expected": "glue_oom",
+      "got": "glue_oom",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h08",
+      "difficulty": "hard",
+      "expected": "mwaa_worker_oom",
+      "got": "mwaa_zombie_task",
+      "top1": false,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h09",
+      "difficulty": "hard",
+      "expected": "glue_ip_exhaustion",
+      "got": "unknown",
+      "top1": false,
+      "rules_top3": false,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h10",
+      "difficulty": "hard",
+      "expected": "athena_too_many_partitions",
+      "got": "unknown",
+      "top1": false,
+      "rules_top3": false,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h11",
+      "difficulty": "hard",
+      "expected": "lf_cross_account_ram",
+      "got": "lf_cross_account_ram",
+      "top1": true,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    },
+    {
+      "id": "h12",
+      "difficulty": "hard",
+      "expected": "mwaa_db_connections",
+      "got": "glue_jdbc_sg_self_ref",
+      "top1": false,
+      "rules_top3": true,
+      "latency_s": 0.0,
+      "tokens": null
+    }
+  ]
+}

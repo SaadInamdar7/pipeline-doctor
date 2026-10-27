@@ -1,0 +1,290 @@
+# Synthetic evaluation scenarios. All identifiers are fictional.
+# difficulty: easy = one clear signature; hard = generic error resolved only by
+# config, missing service, noisy logs, or a plain-language symptom description.
+
+- id: e01
+  expected: glue_s3_access_denied
+  difficulty: easy
+  incident:
+    service: glue
+    error: "An error occurred while calling o102.getDynamicFrame. com.amazonaws.services.s3.model.AmazonS3Exception: Access Denied (Service: Amazon S3; Status Code: 403; Error Code: AccessDenied)"
+- id: e02
+  expected: glue_kms_denied
+  difficulty: easy
+  incident:
+    service: glue
+    error: "User: arn:aws:sts::111122223333:assumed-role/GlueJobRole/GlueJobRunnerSession is not authorized to perform: kms:Decrypt on resource: arn:aws:kms:us-east-1:111122223333:key/abcd"
+- id: e03
+  expected: glue_lf_insufficient
+  difficulty: easy
+  incident:
+    service: glue
+    error: "AnalysisException: Unable to verify existence of default database: com.amazonaws.services.glue.model.AccessDeniedException: Insufficient Lake Formation permission(s) on sales_db"
+- id: e04
+  expected: glue_vpc_no_s3_endpoint
+  difficulty: easy
+  incident:
+    service: glue
+    error: "Unable to execute HTTP request: Connect to example-bucket.s3.us-east-1.amazonaws.com:443 failed: connect timed out"
+    config: {connection: {type: JDBC}, vpc: {s3_endpoint: false, nat_gateway: false}}
+- id: e05
+  expected: glue_jdbc_sg_self_ref
+  difficulty: easy
+  incident:
+    service: glue
+    error: "InvalidInputException: At least one security group must open all ingress ports. To limit traffic, the source security group in your inbound rule can be restricted to the same security group"
+    config: {security_group: {self_referencing: false}}
+- id: e06
+  expected: glue_jdbc_ssl
+  difficulty: easy
+  incident:
+    service: glue
+    error: "javax.net.ssl.SSLHandshakeException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target"
+- id: e07
+  expected: glue_oom
+  difficulty: easy
+  incident:
+    service: glue
+    error: "Command failed with exit code 137"
+    logs: "ERROR [Driver] java.lang.OutOfMemoryError: Java heap space\n at java.util.Arrays.copyOf"
+- id: e08
+  expected: glue_no_space
+  difficulty: easy
+  incident:
+    service: glue
+    error: "java.io.IOException: No space left on device at org.apache.spark.shuffle.IndexShuffleBlockResolver"
+- id: e09
+  expected: glue_concurrent_runs
+  difficulty: easy
+  incident:
+    service: glue
+    error: "ConcurrentRunsExceededException: Concurrent runs exceeded for job orders_daily"
+- id: e10
+  expected: glue_iceberg_commit_conflict
+  difficulty: easy
+  incident:
+    service: glue
+    error: "org.apache.iceberg.exceptions.CommitFailedException: Cannot commit glue.db.events because base metadata location 's3://lake/events/metadata/00041.metadata.json' is not same as the current Glue location"
+- id: e11
+  expected: glue_parquet_schema_mismatch
+  difficulty: easy
+  incident:
+    service: glue
+    error: "org.apache.spark.sql.execution.QueryExecutionException: Parquet column cannot be converted in file s3://lake/orders/part-0001.parquet. Column: [amount], Expected: decimal(10,2), Found: DOUBLE"
+- id: e12
+  expected: glue_module_not_found
+  difficulty: easy
+  incident:
+    service: glue
+    error: "ModuleNotFoundError: No module named 'pydeequ'"
+- id: e13
+  expected: glue_ip_exhaustion
+  difficulty: easy
+  incident:
+    service: glue
+    error: "JobRunFailed: There are not enough free IP addresses in subnet subnet-0abc to launch 40 workers"
+- id: e14
+  expected: mwaa_dag_import_missing_dep
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "Broken DAG: [/usr/local/airflow/dags/ingest.py] ModuleNotFoundError: No module named 'snowflake'"
+- id: e15
+  expected: mwaa_requirements_conflict
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "ERROR: Cannot install apache-airflow-providers-amazon==9.0.0 because these package versions have conflicting dependencies. ResolutionImpossible"
+- id: e16
+  expected: mwaa_pip_no_internet
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "WARNING: Retrying after connection broken: Connection to pypi.org timed out. Could not fetch URL https://pypi.org/simple/pandas/"
+    config: {vpc: {nat_gateway: false}}
+- id: e17
+  expected: mwaa_tasks_stuck_queued
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "Tasks have been stuck in queued state for 30 minutes and then fail"
+    config: {mwaa: {min_workers: 2, max_workers: 2}}
+- id: e18
+  expected: mwaa_worker_oom
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "Task exited with return code Negsignal.SIGKILL"
+- id: e19
+  expected: mwaa_db_connections
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "sqlalchemy.exc.OperationalError: FATAL: remaining connection slots are reserved for non-replication superuser connections"
+- id: e20
+  expected: mwaa_zombie_task
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "Detected zombie job: {'full_filepath': '/usr/local/airflow/dags/etl.py', 'msg': 'Detected <TaskInstance: etl.load> as zombie'}"
+- id: e21
+  expected: mwaa_exec_role_s3
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "AccessDenied: Unable to read requirements.txt from S3 bucket airflow-source-bucket"
+- id: e22
+  expected: mwaa_plugin_incompatible
+  difficulty: easy
+  incident:
+    service: mwaa
+    error: "ERROR - Failed to import plugin custom_operators"
+- id: e23
+  expected: athena_partition_schema_mismatch
+  difficulty: easy
+  incident:
+    service: athena
+    error: "HIVE_PARTITION_SCHEMA_MISMATCH: There is a mismatch between the table and partition schemas. The types are incompatible for column 'price'"
+- id: e24
+  expected: athena_bad_data
+  difficulty: easy
+  incident:
+    service: athena
+    error: "HIVE_BAD_DATA: Error parsing field value '12,5' for field 3: For input string"
+- id: e25
+  expected: athena_exhausted_resources
+  difficulty: easy
+  incident:
+    service: athena
+    error: "Query exhausted resources at this scale factor"
+- id: e26
+  expected: athena_s3_slowdown
+  difficulty: easy
+  incident:
+    service: athena
+    error: "HIVE_CANNOT_OPEN_SPLIT: Error opening Hive split: Please reduce your request rate. (Service: Amazon S3; Error Code: SlowDown)"
+- id: e27
+  expected: athena_output_access
+  difficulty: easy
+  incident:
+    service: athena
+    error: "Unable to verify/create output bucket athena-results-example"
+- id: e28
+  expected: athena_too_many_partitions
+  difficulty: easy
+  incident:
+    service: athena
+    error: "HIVE_TOO_MANY_OPEN_PARTITIONS: Exceeded limit of 100 open writers for partitions/buckets"
+- id: e29
+  expected: lf_iam_allowed_principals
+  difficulty: easy
+  incident:
+    service: lakeformation
+    error: "Users can still access tables they were not granted in Lake Formation"
+    config: {lakeformation: {iam_allowed_principals: true}}
+- id: e30
+  expected: lf_cross_account_ram
+  difficulty: easy
+  incident:
+    service: lakeformation
+    error: "EntityNotFoundException: Database shared_sales not found"
+    config: {lakeformation: {ram_invitation: PENDING}}
+- id: e31
+  expected: lf_data_location
+  difficulty: easy
+  incident:
+    service: lakeformation
+    error: "AccessDeniedException: Insufficient Lake Formation permission(s) on s3://lake-raw/orders/"
+
+# ---------- hard ----------
+- id: h01
+  expected: glue_jdbc_sg_self_ref
+  difficulty: hard
+  note: generic timeout to the database; config shows S3 route is fine but SG has no self-reference
+  incident:
+    service: glue
+    error: "com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure. connect timed out"
+    config: {connection: {type: JDBC}, vpc: {s3_endpoint: true, nat_gateway: false}, security_group: {self_referencing: false}}
+- id: h02
+  expected: glue_vpc_no_s3_endpoint
+  difficulty: hard
+  note: timeout text also matches the SG pattern; config must break the tie
+  incident:
+    service: glue
+    error: "Unable to execute HTTP request: Connect to lake.s3.eu-west-1.amazonaws.com:443 failed: Connection timed out"
+    config: {connection: {type: JDBC}, vpc: {s3_endpoint: false, nat_gateway: false}, security_group: {self_referencing: true}}
+- id: h03
+  expected: mwaa_pip_no_internet
+  difficulty: hard
+  note: only a generic urllib3 error, no pypi URL
+  incident:
+    service: mwaa
+    error: "requirements.txt install failed"
+    logs: "urllib3.exceptions.NewConnectionError: Failed to establish a new connection: [Errno 110] Connection timed out"
+    config: {vpc: {nat_gateway: false}}
+- id: h04
+  expected: mwaa_tasks_stuck_queued
+  difficulty: hard
+  note: service not provided
+  incident:
+    error: "Many tasks stuck in queued state during the 02:00 peak"
+    config: {mwaa: {min_workers: 1, max_workers: 10, running_workers: 10}}
+- id: h05
+  expected: mwaa_dag_import_missing_dep
+  difficulty: hard
+  note: service not provided; same ModuleNotFoundError as a Glue job
+  incident:
+    error: "ModuleNotFoundError: No module named 'great_expectations'"
+    logs: "Broken DAG: [/usr/local/airflow/dags/quality.py]"
+- id: h06
+  expected: lf_data_location
+  difficulty: hard
+  note: reported as a Glue issue, root cause is a Lake Formation data location grant
+  incident:
+    service: glue
+    error: "Crawler failed: AccessDeniedException: Insufficient Lake Formation permission(s) on s3://lake-curated/customers/"
+- id: h07
+  expected: glue_oom
+  difficulty: hard
+  note: noisy log with an S3 SlowDown retry warning before the real failure
+  incident:
+    service: glue
+    error: "Job run failed"
+    logs: "WARN S3 request SlowDown, retrying\nWARN S3 request SlowDown, retrying\nERROR Executor 7: Container killed by YARN for exceeding memory limits. 22.1 GB of 22 GB physical memory used"
+- id: h08
+  expected: mwaa_worker_oom
+  difficulty: hard
+  note: zombie detection is the symptom; SIGKILL from memory is the cause
+  incident:
+    service: mwaa
+    error: "Task exited with return code Negsignal.SIGKILL"
+    logs: "Detected zombie job for task load_events; worker memory at 98% before the task was killed"
+- id: h09
+  expected: glue_ip_exhaustion
+  difficulty: hard
+  note: plain-language description, no exact error string
+  incident:
+    service: glue
+    error: "After we raised workers from 20 to 100 the job fails at start; the console says the subnet does not have enough free addresses"
+- id: h10
+  expected: athena_too_many_partitions
+  difficulty: hard
+  note: plain-language description
+  incident:
+    service: athena
+    error: "Our CTAS that writes one partition per day for the last year keeps failing, smaller date ranges work"
+- id: h11
+  expected: lf_cross_account_ram
+  difficulty: hard
+  note: consumer cannot see shared database
+  incident:
+    service: lakeformation
+    error: "Consumer account cannot see the shared database in its catalog: Database partner_db not found"
+    config: {lakeformation: {ram_invitation: PENDING}}
+- id: h12
+  expected: mwaa_db_connections
+  difficulty: hard
+  note: scheduler crash loop described with SQLAlchemy pool error
+  incident:
+    error: "Scheduler restarts every few minutes"
+    logs: "sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30"

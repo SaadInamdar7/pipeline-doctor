@@ -1,0 +1,29 @@
+[project]
+name = "pipeline-doctor"
+version = "0.1.0"
+description = "AI-assisted root-cause diagnosis for AWS Glue, MWAA (Airflow), Athena and Lake Formation failures"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Saad Inamdar", email = "inamdarsaad16@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.3.0",
+    "boto3>=1.43.119",
+    "mcp>=2.0",
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+pipeline-doctor = "pipeline_doctor.cli:main"
+pipeline-doctor-mcp = "pipeline_doctor.mcp_server:main"
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
